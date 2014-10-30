@@ -1,43 +1,44 @@
-/*if(navigator.connection.type) {
-  document.querySelector('body').innerHTML = navigator.connection.type;
-}*/  
-var txt = '';
-Modernizr.addTest('lowbandwidth', function() {
-    var perf, start, end;
-    var connection = Modernizr.prefixed('connection', navigator) || {};
-  
-    //polyfill connection.bandwidth with connection.type
-    //do not use in operator or ===/!=== here! some browsers have type/bandwidth declared as undefined/null
-    if( connection.bandwidth == null && connection.type != null ){
-        connection.bandwidth = (
-            connection.type == 0 || // connection.UNKNOWN
-            connection.type == 3 || // connection.CELL_2G
-            connection.type == 4 || // connection.CELL_3G
-            /(UNKNOWN)|([23]g)|^(CELL)/i.test(connection.type)) ?
-            1 :
-            7
-        ;
-      txt += connection.type;
-    //polyfill connection.bandwith with performance object stolen from guardian not tested!!!
-    } else if( connection.bandwidth == null && (perf = Modernizr.prefixed('performance', window)) && (perf = perf.timing) &&
-        (start = perf.requestStart || perf.fetchStart || perf.navigationStart) &&
-        (end = perf.responseEnd) ){
-        connection.bandwidth = ((end - start) < 1500) ? 7 : 1;
-      txt += 'b';
-    //assume no-lowbandwidth
-    } else {
-        connection.bandwidth = 7;
-      txt += 'c';
+function connectionLow(){
+    var connectionLow = false,
+        // let Modernizr return the prefixed or unprefixed property of the connection object
+        connection = Modernizr.prefixed('connection', navigator) || {};
+    if( connection.type != null ){
+            /*  Number returned by connection.type equals to:
+                0, UNKNOWN  : Unknown connection
+                1, ETHERNET : Ethernet connection
+                2, WIFI     : WiFi connection
+                3, CELL_2G  : Cell 2G connection
+                4, CELL_3G  : Cell 3G connection
+                5, CELL_4G  : Cell 4G connection
+                6, CELL     : Cell generic connection
+                7, NONE     : No network connection
+            */
+            /* Connections types that are potentially low and will return true for the test:
+                3, CELL_2G  : Cell 2G connection
+                4, CELL_3G  : Cell 3G connection
+                6, CELL     : Cell generic connection
+            */
+            connectionLow = (
+                // in case the browser returns a number:
+                connection.type == 0 ||
+                connection.type == 3 ||
+                connection.type == 4 ||
+                // in case the browser returns the name:
+                /(cell[ _][23][g]|cell$|cellular)/i.test(connection.type)
+            )
     }
-    if(connection.metered){
-        connection.bandwidth /= 3;
-      txt += 'd';
+ 
+    if(connection.metered != null){
+        if(connection.metered) connectionLow = true;
     }
-    return connection.bandwidth < 2.5;
-});
-
-if(Modernizr.lowbandwidth) {
-  document.querySelector('body').innerHTML = txt + 'low'
-} else {
-  document.querySelector('body').innerHTML = txt + 'high'
+ 
+    if(connection.bandwidth != null){
+        if(parseInt(connection.bandwidth) < 1.5) connectionLow = true;
+    }
+    if(connection.downlinkMax != null){
+        if(parseInt(connection.downlinkMax) < 1.5) connectionLow = true;
+    }
+    return connectionLow;
 }
+ 
+if(connectionLow() == true) document.body.addClass("lowconnection");
